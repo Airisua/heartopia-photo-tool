@@ -118,17 +118,19 @@ jobs:
           $setups = @(Get-ChildItem -LiteralPath src-tauri/target/release/bundle/nsis -File | Where-Object { $_.Name -match '-setup\.exe$' })
           if ($setups.Count -ne 1) { throw 'Expected exactly one NSIS installer.' }
           $setup = $setups[0]
-          Copy-Item -LiteralPath $setup.FullName -Destination artifacts/release
-          Copy-Item -LiteralPath ($setup.FullName+'.sig') -Destination artifacts/release
-          node scripts/generate-release-manifest.mjs --setup $setup.FullName --sig ($setup.FullName+'.sig') --version ($env:RELEASE_TAG -replace '^v','') --tag "$env:RELEASE_TAG" --repo Airisua/heartopia-photo-tool --notes-file artifacts/release/release-notes.md --output artifacts/release/latest.json
-          node scripts/verify-release-artifacts.mjs --bundle-dir src-tauri/target/release/bundle/nsis --manifest artifacts/release/latest.json --summary artifacts/release/release-summary.json
-          $digest = (Get-FileHash -LiteralPath $setup.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-          [IO.File]::WriteAllText((Join-Path $PWD 'artifacts/release/SHA256SUMS.txt'), ($digest+'  '+$setup.Name+"`n"))
+          $assetName = $setup.Name -replace ' ','.'
+          $assetPath = Join-Path (Join-Path $PWD 'artifacts/release') $assetName
+          Copy-Item -LiteralPath $setup.FullName -Destination $assetPath
+          Copy-Item -LiteralPath ($setup.FullName+'.sig') -Destination ($assetPath+'.sig')
+          node scripts/generate-release-manifest.mjs --setup $assetPath --sig ($assetPath+'.sig') --version ($env:RELEASE_TAG -replace '^v','') --tag "$env:RELEASE_TAG" --repo Airisua/heartopia-photo-tool --notes-file artifacts/release/release-notes.md --output artifacts/release/latest.json
+          node scripts/verify-release-artifacts.mjs --bundle-dir artifacts/release --manifest artifacts/release/latest.json --summary artifacts/release/release-summary.json
+          $digest = (Get-FileHash -LiteralPath $assetPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText((Join-Path $PWD 'artifacts/release/SHA256SUMS.txt'), ($digest+'  '+$assetName+"`n"))
 
       - name: Authoritative Tauri updater positive and tampering verification
         shell: pwsh
         run: |
-          $setup = Get-ChildItem -LiteralPath src-tauri/target/release/bundle/nsis -File | Where-Object { $_.Name -match '-setup\.exe$' }
+          $setup = Get-ChildItem -LiteralPath artifacts/release -File | Where-Object { $_.Name -match '-setup\.exe$' }
           ./scripts/local-verify-update.ps1 -Package $setup.FullName -Signature ($setup.FullName+'.sig') -Manifest artifacts/release/latest.json
 
       - name: Upload verified assets only

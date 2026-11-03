@@ -120,6 +120,8 @@ git push origin v0.1.0
 
 `signature` 必须是 `.sig` 的内容；写路径或 URL 会导致更新失败。`url` 指向同版本 Release 资产，不能指向 `latest` 之外的临时地址。
 
+GitHub 会把上传资产文件名中的空格转换为点。发布流程因此先把安装包及 `.sig` 的对外文件名规范化，再生成 manifest、摘要和 SHA-256 清单；本地 Tauri 原始构建文件不改名。不能用含空格的本地名字猜测已上传的下载 URL。重命名不改变文件内容，发布前仍对规范化文件运行实际更新验签。
+
 `.sig` 的内部 trusted comment 应类似：
 
 ```text
