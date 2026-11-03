@@ -3,6 +3,7 @@ dist/
 target/
 .local/
 .secrets/
+.cargo/config.toml
 .env
 .env.*
 !.env.example
