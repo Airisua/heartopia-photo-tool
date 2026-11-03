@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout release ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
           fetch-depth: 0
@@ -150,7 +150,7 @@ jobs:
 
     steps:
       - name: Checkout release scripts without persisted credentials
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
           persist-credentials: false
