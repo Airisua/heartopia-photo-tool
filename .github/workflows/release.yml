@@ -1,0 +1,133 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  windows-release:
+    name: Signed Windows NSIS release
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      HEARTOPIA_RELEASE: "1"
+      HEARTOPIA_CRYPTO_MATERIAL_B64: ${{ secrets.HEARTOPIA_CRYPTO_MATERIAL_B64 }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout release ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Verify crypto material is present and correctly sized
+        run: node scripts/verify-crypto-material.mjs --require
+
+      - name: Release configuration preflight
+        run: node scripts/preflight-release.mjs --release
+
+      - name: Check tag matches package version
+        run: node scripts/check-release-tag.mjs --tag ${{ github.event.inputs.tag || github.ref_name }}
+
+      - name: Secret and path scan
+        run: node scripts/scan-secrets.mjs
+
+      - name: TypeScript checks
+        run: npm run typecheck
+
+      - name: Frontend tests
+        run: npm test
+
+      - name: Frontend production build
+        run: npm run build
+
+      - name: Rust formatting
+        run: |
+          cargo fmt --manifest-path crates/photo-core/Cargo.toml --all -- --check
+          cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+
+      - name: Rust clippy
+        run: |
+          cargo clippy --manifest-path crates/photo-core/Cargo.toml --locked --all-targets -- -D warnings
+          cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
+
+      - name: Rust tests
+        run: |
+          cargo test --manifest-path crates/photo-core/Cargo.toml --locked
+          cargo test --manifest-path src-tauri/Cargo.toml --locked
+
+      - name: Tauri formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+
+      - name: Tauri clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: Tauri tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: node scripts/release-notes.mjs --version ${{ github.event.inputs.tag || github.ref_name }} --file CHANGELOG.md --output artifacts/release-notes.md --github-output
+
+      - name: Build, sign, and publish
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
+          releaseName: "心动小镇图片解密工具 v__VERSION__"
+          releaseBody: ${{ steps.notes.outputs.body }}
+          releaseDraft: false
+          prerelease: false
+          uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
+          args: --bundles nsis
+
+      - name: Verify local NSIS artifacts
+        run: node scripts/verify-release-artifacts.mjs --bundle-dir src-tauri/target/release/bundle/nsis --summary artifacts/release-summary.json
+
+      - name: Verify published manifest and signed asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/verify-published-release.mjs --repo ${{ github.repository }} --tag ${{ github.event.inputs.tag || github.ref_name }}
+
+      - name: Upload release summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-summary
+          path: artifacts/release-summary.json
+          if-no-files-found: warn
