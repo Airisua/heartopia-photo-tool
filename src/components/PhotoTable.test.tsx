@@ -10,8 +10,8 @@ vi.mock("../lib/thumbnailCache", () => ({
 }));
 
 describe("PhotoTable virtualization and selection", () => {
-  it("renders a bounded subset for 20001 rows", () => {
-    const photos = makePhotos(20001);
+  it("renders a bounded subset for 20,000 rows", () => {
+    const photos = makePhotos(20_000);
     const { container } = render(
       <PhotoTable
         photos={photos}
@@ -26,7 +26,7 @@ describe("PhotoTable virtualization and selection", () => {
 
     expect(screen.getByRole("grid", { name: "图片列表" })).toHaveAttribute(
       "aria-rowcount",
-      "19776",
+      "20001",
     );
     const checkboxes = screen.getAllByRole("checkbox");
     expect(checkboxes.length).toBeLessThan(40);
@@ -67,7 +67,7 @@ describe("PhotoTable virtualization and selection", () => {
   });
 
   it("supports full-list keyboard navigation and reset scroll on filter change", () => {
-    const photos = makePhotos(20001);
+    const photos = makePhotos(20_000);
     const onToggle = vi.fn();
     const props = {
       photos,

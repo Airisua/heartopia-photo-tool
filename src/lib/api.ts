@@ -213,7 +213,7 @@ function previewLocalDate(date: Date): string {
   ).padStart(2, "0")}`;
 }
 
-function createPreviewPhotos(count = 20001): PhotoView[] {
+function createPreviewPhotos(count = 20_000): PhotoView[] {
   const directories = ["Photo", "Photo", "Photo", "Photo", "Draw", "Limit", "NoBgPhoto", "Announcement"];
   return Array.from({ length: count }, (_, index) => {
     const directory = directories[index % directories.length];

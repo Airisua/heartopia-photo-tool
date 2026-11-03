@@ -673,9 +673,9 @@ mod tests {
     #[test]
     fn protected_tap_tap_is_rejected() {
         assert!(is_protected_output(Path::new(
-            "F:\\TapTap\\PC Games\\Heartopia"
+            "R:\\TapTap\\PC Games\\Heartopia"
         )));
-        assert!(!is_protected_output(Path::new("F:\\Photos\\Heartopia")));
+        assert!(!is_protected_output(Path::new("R:\\Photos\\Heartopia")));
     }
 
     #[test]
