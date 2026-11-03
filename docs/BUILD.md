@@ -71,7 +71,7 @@ node scripts/preflight-release.mjs --ci
 # 一次性：从本机反编译源码读取 KEY/IV，经 DPAPI 保存；不显示材料
 .\scripts\local-prepare-secrets.ps1 -EncryptionSource '<本机 EncryptUtil.cs 路径>'
 
-# 构建：临时注入材料与更新私钥，结束后自动清除环境变量
+# 构建：前端、原生编译、签名打包分阶段执行，结束后清除环境变量
 .\scripts\local-build.ps1 -Mode build
 
 # 开发/测试
@@ -79,7 +79,11 @@ node scripts/preflight-release.mjs --ci
 .\scripts\local-build.ps1 -Mode test
 ```
 
-`local-build.ps1` 只从 `.secrets/crypto.dpapi` 读取 48 字节并在进程内注入；不会把材料写入仓库或输出。没有本地材料的公开贡献者可以只运行 `npm run tauri dev`，此时应用应显示 `keyAvailable=false`，解密不可用。也可在当前 PowerShell 会话手动设置，构建后立即清除：
+`local-build.ps1` 从 `.secrets/crypto.dpapi` 读取 48 字节并在进程内注入；不会把材料写入仓库或输出。没有本地材料的公开贡献者可以只运行 `npm run tauri dev`，此时应用应显示 `keyAvailable=false`，解密不可用。
+
+本地 Release 构建分为三个阶段：先在不含发布密钥的环境中构建前端；再仅向 `tauri build --no-bundle` 注入游戏解密材料；最后清除材料，仅向 `tauri bundle --bundles nsis` 注入更新签名私钥。构建使用被 Git 忽略的钩子覆盖配置，避免重复执行前端脚本；不会改写正式配置。开发和测试模式不读取签名私钥，任意失败路径都会清理环境变量和明文缓冲。测试模式同时运行核心库及 Tauri 测试。
+
+如需在当前 PowerShell 会话手动注入，请从本地安全存储读取，并在构建后立即清除：
 
 ```powershell
 # 值从受保护的本地存储读取，不在此文档中展示
@@ -93,7 +97,7 @@ Remove-Item Env:HEARTOPIA_CRYPTO_MATERIAL_B64
 Remove-Item Env:HEARTOPIA_RELEASE
 ```
 
-公开 CI 不注入该 secret，因此只能构建 `keyAvailable=false` 的开发产物；Release workflow 必须注入仓库 secret，并在构建前用 `scripts/verify-crypto-material.mjs --require` 校验。
+公开 CI 不注入该 secret，因此只能构建 `keyAvailable=false` 的开发产物；Release workflow 仅在原生编译步骤注入它，并在编译前用 `scripts/verify-crypto-material.mjs --require` 校验。更新私钥只进入单独的签名打包步骤，不进入 npm 安装、前端构建、Cargo 编译或测试；Release 不保存可能包含注入材料的 Rust target 缓存。
 
 ## 6. 发布配置预检
 

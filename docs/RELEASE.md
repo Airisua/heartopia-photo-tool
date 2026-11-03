@@ -70,7 +70,7 @@ node scripts/preflight-release.mjs --ci
 ## 4. 发布流程
 
 1. 在 `main` 上完成功能、文档和测试。
-2. 确认工作区干净，`node scripts/scan-secrets.mjs` 通过。
+2. 确认工作区干净，`node scripts/scan-secrets.mjs` 和 `node scripts/scan-secrets.mjs --history` 都通过。历史扫描覆盖全部分支和标签，不能仅检查最新文件。
 3. 打 Tag 并推送：
 
 ```powershell
@@ -79,15 +79,16 @@ git push origin main
 git push origin v0.1.0
 ```
 
-4. `.github/workflows/release.yml` 在 Windows runner 上：
-   - `npm ci`，运行前端与 Rust 测试；
-   - 校验发布 Tag 与 `package.json` 版本一致；
-   - 校验 `HEARTOPIA_CRYPTO_MATERIAL_B64`（缺失/长度错误直接失败）；
-   - 发布配置预检；
-   - 从 `CHANGELOG.md` 的 `## [<version>]` 提取本次更新说明，写入 `latest.json` 的 `notes`；
-   - 使用 Tauri Action 构建 NSIS、生成 `.sig` 和 `latest.json`；
-   - 创建公开 Release，上传安装包、签名和 `latest.json`；
-   - 构建后再次校验本地产物与线上 manifest/下载 URL。
+4. `.github/workflows/release.yml` 分成只读构建与独立发布两个 job：
+   - Windows 构建 job 不持有仓库写权限，checkout 不保留 Git 凭据；先运行依赖安装、前端/Rust 测试和完整历史隐私扫描；
+   - 校验 Tag、版本与签名密钥是否已配置；原生编译步骤单独校验并注入游戏解密材料；
+   - 前端不接触发布密钥，`tauri build --no-bundle` 不接触签名私钥；`tauri bundle --bundles nsis` 仅在独立步骤接收签名私钥；
+   - 不保存可能包含构建材料的 Rust target 缓存；
+   - 从 `CHANGELOG.md` 提取说明，生成 `latest.json`、本地产物摘要和 `SHA256SUMS.txt`；
+   - 发布前校验本地 manifest、版本绑定和安装包，并用真实 Tauri Updater `Update::verify()` 检查有效包、篡改包、篡改签名及版本不匹配；
+   - 只上传经校验的安装包及发布资料到 Actions artifact，不包含密钥、配置、测试图片或本机日志；
+   - 独立发布 job 才拥有仓库写权限；复核 artifact 的 SHA-256 后创建草稿、上传资产，再公开 Release；
+   - 公开后流式下载资产，与本地摘要的 SHA-256 和大小比对；短暂的 403/404 使用有界重试，持续失败仍使验证失败。
 5. 也可在 Actions 页面手动触发 `Release`，填入已存在的 Tag。
 
 发布工作流不会自动修改版本号；Tag 与三个版本字段不一致时预检失败。
@@ -127,7 +128,7 @@ timestamp:...	file:<安装包文件名>	version:0.1.0
 
 `verify-release-artifacts.mjs`、`generate-release-manifest.mjs` 和 `verify-published-release.mjs` 会解析这段 comment；缺少 `version:` 或版本不匹配会直接失败。最终密码学验签仍由 Tauri Updater 在客户端执行。
 
-正常流程由 `tauri-action` 自动生成 `latest.json`。若需要手工构建/核对，可用脚本从本地产物生成并校验：
+正常流程由 `generate-release-manifest.mjs` 从同批签名产物生成 `latest.json`。若需要手工构建/核对，可使用同一脚本：
 
 ```powershell
 node scripts/generate-release-manifest.mjs `
@@ -141,12 +142,12 @@ node scripts/verify-release-artifacts.mjs `
   --manifest artifacts/latest.json
 ```
 
-手工生成的 manifest 不会自动上传；Release workflow 仍以 `tauri-action` 生成的资产为准。
+手工生成的 manifest 不会自动上传。手工发布也必须先核对安装包、`.sig`、`latest.json` 与 SHA-256，再上传草稿并公开；不可覆盖已经发布的同版本资产。
 
 ## 6. 发布后验证
 
 ```powershell
-node scripts/verify-published-release.mjs --repo Airisua/heartopia-photo-tool --tag v0.1.0
+node scripts/verify-published-release.mjs --repo Airisua/heartopia-photo-tool --tag v0.1.0 --summary artifacts/release/release-summary.json
 ```
 
 该脚本检查：
@@ -154,8 +155,11 @@ node scripts/verify-published-release.mjs --repo Airisua/heartopia-photo-tool --
 - `latest.json` 可访问、版本匹配、`pub_date` 合法；
 - `platforms.windows-x86_64.signature` 非空；
 - 安装包 URL 为 HTTPS、指向 GitHub Release、可下载且体积符合内置 WebView2 的预期。
+- 传入 `--summary` 时，流式下载后的大小、文件名和 SHA-256 必须与已验签的本地产物摘要一致。
 
 它验证的是发布资产的一致性和可访问性；**密码学签名校验由 Tauri Updater 在客户端下载时执行**。不要用该脚本代替应用内更新测试。
+
+无窗口的签名正反例验收可通过 `scripts/local-verify-update.ps1` 执行，它调用 Tauri Updater 的实际验签路径，但不安装、不重启，也不替代跨版本更新和配置保留验收。
 
 随后在干净 Windows 上安装该版本，确认启动、配置持久化、解密和日志。记录到 `docs/acceptance-evidence/`。
 
