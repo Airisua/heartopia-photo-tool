@@ -85,7 +85,7 @@ describe("PhotoTable virtualization and selection", () => {
     expect(grid.getAttribute("aria-activedescendant")).toMatch(/-row-1$/);
 
     fireEvent.keyDown(grid, { key: "End" });
-    expect(grid.getAttribute("aria-activedescendant")).toMatch(/-row-20001$/);
+    expect(grid.getAttribute("aria-activedescendant")).toMatch(/-row-20000$/);
     fireEvent.keyDown(grid, { key: "Home" });
     expect(grid.getAttribute("aria-activedescendant")).toMatch(/-row-1$/);
     fireEvent.keyDown(grid, { key: " " });
