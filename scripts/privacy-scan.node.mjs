@@ -17,6 +17,9 @@ import {
 } from "./lib/privacy-scan.mjs";
 
 const publicNoreply = "Airisua@users.noreply.github.com";
+const botSupportEmail = ["support", "github.com"].join("@");
+const canonicalBotSignoff = `Signed-off-by: dependabot[bot] <${botSupportEmail}>`;
+const privateSignoffEmail = ["private", "gmail.com"].join("@");
 
 function categories(text, options = {}) {
   return scanText(text, options).map((finding) => finding.category);
@@ -134,6 +137,21 @@ test("rejects personal email but permits the public noreply address", () => {
   assert.ok(categories(fakePersonalEmail()).includes("personal-email"));
   assert.ok(!categories(publicNoreply).includes("personal-email"));
   assert.ok(!categories("owner@example.com").includes("personal-email"));
+});
+
+test("allows only the exact canonical Dependabot signoff email", () => {
+  assert.deepEqual(categories(canonicalBotSignoff), []);
+});
+
+test("rejects a noncanonical signoff email", () => {
+  const otherSignoff = `Signed-off-by: Dependabot <${privateSignoffEmail}>`;
+  assert.ok(categories(otherSignoff).includes("personal-email"));
+});
+
+test("does not let canonical signoff hide an appended token", () => {
+  const result = categories(`${canonicalBotSignoff} ${fakeGithubToken()}`);
+  assert.ok(result.includes("github-token"));
+  assert.ok(result.includes("personal-email"));
 });
 
 test("detects local scale and host fingerprints", () => {

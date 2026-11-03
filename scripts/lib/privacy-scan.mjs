@@ -7,6 +7,8 @@ const DEFAULT_MAX_TEXT_BYTES = 8 * 1024 * 1024;
 const GIT_MAX_BUFFER = 64 * 1024 * 1024;
 const GIT_TIMEOUT_MS = 120_000;
 const PUBLIC_NOREPLY_EMAIL = "Airisua@users.noreply.github.com";
+const CANONICAL_BOT_SIGNOFF_EMAIL = ["support", "github.com"].join("@");
+const CANONICAL_BOT_SIGNOFF = `Signed-off-by: dependabot[bot] <${CANONICAL_BOT_SIGNOFF_EMAIL}>`;
 const ALLOWED_ICON_PREFIX = "src-tauri/icons/";
 const GENERATED_ICON_EXTENSIONS = new Set([".icns", ".ico", ".png"]);
 
@@ -487,8 +489,15 @@ function checkTextLine(line, options) {
   }
 
   EMAIL_PATTERN.lastIndex = 0;
+  const canonicalBotSignoff = line.trim() === CANONICAL_BOT_SIGNOFF;
   let email;
   while ((email = EMAIL_PATTERN.exec(line)) !== null) {
+    if (
+      canonicalBotSignoff &&
+      email[0].toLowerCase() === CANONICAL_BOT_SIGNOFF_EMAIL.toLowerCase()
+    ) {
+      continue;
+    }
     if (!isPlaceholderEmail(email[0])) add("personal-email", index);
   }
 
