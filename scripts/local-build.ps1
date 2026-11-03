@@ -1,6 +1,7 @@
 param(
     [ValidateSet('build', 'dev', 'test')][string]$Mode = 'build',
     [string]$Config,
+    [string]$DownloadProxy,
     [switch]$DebugBuild
 )
 $ErrorActionPreference = 'Stop'
@@ -10,6 +11,9 @@ $protectedFile = Join-Path $private 'crypto.dpapi'
 $plain = $null
 $passwordBytes = $null
 $pushed = $false
+$proxyChanged = $false
+$previousHttpProxy = [Environment]::GetEnvironmentVariable('HTTP_PROXY', 'Process')
+$previousHttpsProxy = [Environment]::GetEnvironmentVariable('HTTPS_PROXY', 'Process')
 $secretNames = @('HEARTOPIA_CRYPTO_MATERIAL_B64','HEARTOPIA_RELEASE','TAURI_SIGNING_PRIVATE_KEY','TAURI_SIGNING_PRIVATE_KEY_PASSWORD')
 try {
     foreach ($name in $secretNames) { Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue }
@@ -72,6 +76,16 @@ try {
             $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = [Text.Encoding]::UTF8.GetString($passwordBytes)
             [Array]::Clear($passwordBytes, 0, $passwordBytes.Length)
         }
+        if ($DownloadProxy) {
+            $proxyUri = $null
+            if (-not [Uri]::TryCreate($DownloadProxy, [UriKind]::Absolute, [ref]$proxyUri) -or
+                $proxyUri.Scheme -notin @('http', 'https')) {
+                throw 'Download proxy must be an absolute HTTP or HTTPS URL.'
+            }
+            $env:HTTP_PROXY = $DownloadProxy
+            $env:HTTPS_PROXY = $DownloadProxy
+            $proxyChanged = $true
+        }
         $arguments = @('run','tauri','--','bundle','--bundles','nsis','--ci')
         if ($DebugBuild) { $arguments += '--debug' }
         if ($Config) { $arguments += @('--config',$Config) }
@@ -93,4 +107,8 @@ try {
     foreach ($name in $secretNames) { Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue }
     if ($null -ne $plain) { [Array]::Clear($plain,0,$plain.Length) }
     if ($null -ne $passwordBytes) { [Array]::Clear($passwordBytes,0,$passwordBytes.Length) }
+    if ($proxyChanged) {
+        [Environment]::SetEnvironmentVariable('HTTP_PROXY', $previousHttpProxy, 'Process')
+        [Environment]::SetEnvironmentVariable('HTTPS_PROXY', $previousHttpsProxy, 'Process')
+    }
 }

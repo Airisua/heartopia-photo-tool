@@ -83,6 +83,8 @@ node scripts/preflight-release.mjs --ci
 
 本地 Release 构建分为三个阶段：先在不含发布密钥的环境中构建前端；再仅向 `tauri build --no-bundle` 注入游戏解密材料；最后清除材料，仅向 `tauri bundle --bundles nsis` 注入更新签名私钥。构建使用被 Git 忽略的钩子覆盖配置，避免重复执行前端脚本；不会改写正式配置。开发和测试模式不读取签名私钥，任意失败路径都会清理环境变量和明文缓冲。测试模式同时运行核心库及 Tauri 测试。
 
+安装后的应用支持离线运行，但构建时 Tauri 即使已有 WebView2 离线安装器缓存，也会请求 Microsoft 下载链接的重定向信息。若该链接被网络环境阻断，可使用 `-DownloadProxy 'http://HOST:PORT'` 临时指定构建下载代理；它仅影响当前打包进程，结束或失败后恢复原进程变量，不修改系统代理，也不进入发布应用。
+
 如需在当前 PowerShell 会话手动注入，请从本地安全存储读取，并在构建后立即清除：
 
 ```powershell
