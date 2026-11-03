@@ -293,7 +293,7 @@ function previewCheck(): UpdateView {
     status: "available",
     currentVersion: previewState.version,
     version: "0.2.0",
-    notes: "· 优化了万级素材列表的滚动与缩略图加载\n· 增加失败清单导出\n· 修复长路径输出时的冲突重命名",
+    notes: "· 优化了大规模素材列表的滚动与缩略图加载\n· 增加失败清单导出\n· 修复长路径输出时的冲突重命名",
     downloaded: 0,
     total: 42_800_000,
   };
@@ -581,7 +581,7 @@ async function previewCommand(name: string, args: Record<string, unknown>): Prom
           status: done ? "ready" : "downloading",
           currentVersion: previewState.version,
           version: "0.2.0",
-          notes: "· 优化了万级素材列表的滚动与缩略图加载\n· 增加失败清单导出\n· 修复长路径输出时的冲突重命名",
+          notes: "· 优化了大规模素材列表的滚动与缩略图加载\n· 增加失败清单导出\n· 修复长路径输出时的冲突重命名",
           downloaded,
           total,
         } satisfies UpdateView);
