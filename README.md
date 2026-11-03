@@ -1,10 +1,12 @@
 # 心动小镇图片解密工具
 
+**简体中文** | [English](README.en.md)
+
 一个面向 Windows 10/11 x64 的本地桌面工具，用来批量还原《心动小镇》客户端 `ScreenCapture` 目录中的加密截图。基于 Tauri 2、Rust 原生 AES-256-CBC/PKCS7 和 React，安装后不依赖 Node.js、Rust、Python、OpenSSL，也不需要启动游戏或任何本地服务。
 
 [Windows 安装包](https://github.com/Airisua/heartopia-photo-tool/releases) · [使用说明](docs/USAGE.md) · [版本记录](CHANGELOG.md)
 
-> 当前为首个桌面测试版本。安装包已完成本地构建，正在验证和上传；正式下载以 Releases 页面实际附件为准。纯净 Windows 10/11 安装与跨版本更新验收尚未全部完成。
+> `0.1.0` 是首个桌面测试版本，安装包已发布，可从 Releases 下载。纯净 Windows 10/11 安装与跨版本更新验收尚未全部完成。
 
 > 非官方工具，与游戏开发商和发行商无关。仅处理你本机有权访问的文件。
 
