@@ -1,126 +1,88 @@
 #!/usr/bin/env node
-import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { dirname, extname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+import {
+  loadKnownSecrets,
+  repoRootFromModule,
+  scanRepository,
+} from "./lib/privacy-scan.mjs";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const maxBytes = 2 * 1024 * 1024;
-const binaryExtensions = new Set([
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".gif",
-  ".webp",
-  ".ico",
-  ".icns",
-  ".exe",
-  ".dll",
-  ".msi",
-  ".zip",
-  ".gz",
-  ".7z",
-  ".pdf",
-  ".woff",
-  ".woff2",
-  ".ttf",
-  ".otf",
-  ".bin",
-  ".pdb",
-]);
+const root = repoRootFromModule();
+const args = process.argv.slice(2);
+let scope = "working";
+let knownSecretsFile = null;
 
-const patterns = [
-  {
-    name: "private-key-block",
-    re: /-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----/g,
-  },
-  { name: "github-token", re: /\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{20,})\b/g },
-  { name: "aws-access-key", re: /\bAKIA[0-9A-Z]{16}\b/g },
-  { name: "aws-secret", re: /\baws_secret_access_key\s*[:=]\s*["'][^"']{20,}/gi },
-  {
-    name: "tauri-private-key-value",
-    re: /\bTAURI_SIGNING_PRIVATE_KEY\s*[:=]\s*["']?[A-Za-z0-9+/=]{40,}/g,
-  },
-  {
-    name: "crypto-material-value",
-    re: /\bHEARTOPIA_CRYPTO_MATERIAL_B64\s*[:=]\s*["']?[A-Za-z0-9+/=]{40,}/g,
-  },
-  {
-    name: "absolute-windows-user-path",
-    re: /\b[A-Za-z]:\\Users\\(?!<|%|\{|\$|\*|PRIVATE_|TEST_|EXAMPLE_|REDACTED_|SENTINEL|Example|Test|Alice|Bob|User)[^\\\s"'`]+/gi,
-  },
-  {
-    name: "absolute-unix-user-path",
-    re: /(?:\/home\/|\/Users\/)(?!<|%|\{|\$|\*|Example|Test|Alice|Bob|User)[A-Za-z0-9._-]+/gi,
-  },
-];
-
-function listedFiles() {
-  const output = execFileSync(
-    "git",
-    ["-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-    { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+function usage() {
+  console.error(
+    [
+      "用法: node scripts/scan-secrets.mjs [--staged|--history] [--known-secrets-file <path>]",
+      "",
+      "默认扫描工作树（已跟踪 + 未忽略文件）；--staged 只扫描暂存区；",
+      "--history 扫描所有 refs 的历史 blob 和提交元数据。",
+      "扫描结果只显示位置与类别，不显示匹配内容、对象 ID 或秘密值。",
+    ].join("\n"),
   );
-  return [...new Set(output.split("\0").filter(Boolean))];
 }
 
-const findings = [];
+for (let index = 0; index < args.length; index += 1) {
+  const arg = args[index];
+  if (arg === "--staged" || arg === "--history") {
+    if (scope !== "working") {
+      console.error("privacy scan: 只能选择一个扫描范围（--staged 或 --history）。");
+      process.exit(2);
+    }
+    scope = arg.slice(2);
+  } else if (arg === "--known-secrets-file") {
+    const value = args[++index];
+    if (!value) {
+      console.error("privacy scan: --known-secrets-file 缺少路径。");
+      process.exit(2);
+    }
+    knownSecretsFile = resolve(process.cwd(), value);
+  } else if (arg === "--help" || arg === "-h") {
+    usage();
+    process.exit(0);
+  } else {
+    console.error("privacy scan: 不认识的参数（未回显参数内容）。");
+    usage();
+    process.exit(2);
+  }
+}
 
-for (const relative of listedFiles()) {
-  const file = join(root, relative);
-  if (!existsSync(file)) continue;
-  const info = statSync(file);
-  if (!info.isFile() || info.size === 0 || info.size > maxBytes) continue;
-  if (binaryExtensions.has(extname(relative).toLowerCase())) continue;
-
-  let text;
+let knownSecrets = [];
+if (knownSecretsFile) {
   try {
-    text = readFileSync(file, "utf8");
+    knownSecrets = loadKnownSecrets(knownSecretsFile);
   } catch {
-    continue;
-  }
-  if (text.includes("\0")) continue;
-
-  const allowed = false;
-  if (allowed) continue;
-
-  const lines = text.split(/\r?\n/);
-  for (const pattern of patterns) {
-    pattern.re.lastIndex = 0;
-    let match;
-    while ((match = pattern.re.exec(text)) !== null) {
-      const line = text.slice(0, match.index).split(/\r?\n/).length;
-      const context = lines.slice(Math.max(0, line - 3), line + 2).join("\n");
-      
-      findings.push({ relative, line, name: pattern.name });
-      break;
-    }
-  }
-
-  
-  const arrayPattern = /(?:new\s+byte\s*\[\s*(?:16|32)\s*\]|\[\s*u8\s*;\s*(?:16|32)\s*\])/gi;
-  let match;
-  while ((match = arrayPattern.exec(text)) !== null) {
-    const windowText = text.slice(match.index, match.index + 1600);
-    const numbers = windowText.match(/\b\d{1,3}\b/g) ?? [];
-    if (numbers.length >= 24) {
-      const line = text.slice(0, match.index).split(/\r?\n/).length;
-      const context = lines.slice(Math.max(0, line - 3), line + 3).join("\n");
-      if (true) {
-        findings.push({ relative, line, name: "possible-raw-key-or-iv-array" });
-      }
-      break;
-    }
+    console.error("privacy scan: 无法读取 known-secrets 文件；文件内容和路径不会显示。");
+    process.exit(2);
   }
 }
 
-if (findings.length > 0) {
-  console.error("secret scan: FAIL");
-  for (const finding of findings) {
-    console.error(`- ${finding.relative}:${finding.line} [${finding.name}]`);
+let result;
+try {
+  result = scanRepository({ root, scope, knownSecrets });
+} catch {
+  console.error("privacy scan: 扫描失败（未显示内部路径或对象信息）。");
+  process.exit(2);
+}
+
+const scopeLabel =
+  scope === "staged" ? "暂存区" : scope === "history" ? "Git 历史" : "工作树";
+
+if (result.findings.length > 0) {
+  console.error(
+    `privacy scan: FAIL (${result.findings.length} 个问题；${scopeLabel})`,
+  );
+  for (const finding of result.findings) {
+    console.error(
+      `- ${finding.scope}:${finding.path}:${finding.line} [${finding.category}]`,
+    );
   }
-  console.error("仅显示位置，不显示匹配内容。移除秘密，或在确认是合成测试向量时加 secret-scan 标记。");
+  console.error(
+    "仅显示位置和类别，不显示匹配内容、对象 ID 或秘密值。请移除敏感信息；" +
+      "不要使用 allow-file 或全文件豁免。",
+  );
   process.exit(1);
 }
 
-console.log("secret scan: PASS (no tracked secrets or absolute user paths found)");
+console.log(`privacy scan: PASS (${scopeLabel}；未发现敏感信息)`);

@@ -918,6 +918,8 @@ mod tests {
                 &junction.to_string_lossy(),
                 &outside.to_string_lossy(),
             ])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .status()
             .expect("cmd available");
         if !status.success() {

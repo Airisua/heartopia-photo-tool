@@ -780,6 +780,8 @@ mod tests {
                 &link.to_string_lossy(),
                 &real.to_string_lossy(),
             ])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .status()
             .expect("cmd available");
         if !status.success() {

@@ -23,6 +23,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -65,17 +68,13 @@ jobs:
           cargo test --manifest-path crates/photo-core/Cargo.toml --locked
           cargo test --manifest-path src-tauri/Cargo.toml --locked
 
-      - name: Tauri formatting
-        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
-
-      - name: Tauri clippy
-        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-
-      - name: Tauri tests
-        run: cargo test --manifest-path src-tauri/Cargo.toml
+      - name: Privacy scanner tests
+        run: node --test scripts/privacy-scan.node.mjs
 
       - name: Secret and path scan
-        run: node scripts/scan-secrets.mjs
+        run: |
+          node scripts/scan-secrets.mjs
+          node scripts/scan-secrets.mjs --history
 
       - name: Release configuration preflight
         run: node scripts/preflight-release.mjs --ci
