@@ -4,7 +4,7 @@
 
 图例：`Pending` 未验证；`Partial` 有部分证据但未覆盖全部要求；`Pass` 有证据且符合预期；`Fail` 有证据但不符合；`Blocked` 受外部条件阻塞并注明原因。
 
-> 2026-11-03 本地检查曾在加固前全绿，随后 core 加固引入 `WriteOutcome::Cancelled` 编译错误，见 [core hardening status](acceptance-evidence/2026-11-03-core-hardening-status.md)；发布前必须复跑。原生开发构建已跑通主路径，见 [部分运行证据](acceptance-evidence/2026-11-03-native-dev-partial.md)；这不等于干净机、安装版或更新链路验收，A1–A10 仍按证据逐项判定。
+> 本轮 `0.1.1` 候选版本已重新完成格式/clippy、前端、核心和 Tauri 测试、真实图片只读原生回归以及更新签名正反例，见 [最新回归记录](acceptance-evidence/2026-11-03-regression-0.1.1.md)。早期编译错误记录保留为历史，不代表当前构建仍失败。这仍不等于干净机、完整安装版 GUI 或真实跨版本安装更新验收；A1–A10 按证据范围逐项判定。
 
 ## 1. 验收环境
 
@@ -22,16 +22,18 @@
 
 | ID | 要求 | 验证方法 | 证据 | 状态 |
 |---|---|---|---|---|
-| A1 | 原生 AES-256-CBC/PKCS7 能解出可打开 JPG/PNG；损坏密文明确失败 | `cargo test --manifest-path crates/photo-core/Cargo.toml`；真实样本只读解密并与源哈希对照（Photo/Draw 已实测；Limit/NoBgPhoto/Announcement 待逐类） | 单测曾 34 PASS（加固后待复跑）；[部分运行证据](acceptance-evidence/2026-11-03-native-dev-partial.md)：JPEG/PNG 解码后可正常打开，源哈希/大小/mtime 不变 | Partial |
+| A1 | 原生 AES-256-CBC/PKCS7 能解出可打开 JPG/PNG；损坏密文明确失败 | `cargo test --manifest-path crates/photo-core/Cargo.toml`；真实样本只读解密并与源哈希对照 | [最新回归](acceptance-evidence/2026-11-03-regression-0.1.1.md)：核心 50 项测试通过；真实目录代表性图片解密和图像解码成功，源未变，损坏输入无输出；安装版完整 GUI 抽查仍按实机证据记录 | Partial |
 | A2 | 文件名日期按 Windows FILETIME（100ns 自 1601 UTC）解析；无法解析回退修改时间并标注来源 | 日期单测 + 真实 Photo 样本批量对照（具体计数不入库）；核对本地日期边界和今天/7天/30天 | [FILETIME 证据](acceptance-evidence/2026-11-03-filetime.md)（行为高置信，待补命令/来源）；7d 筛选原生运行部分证据 | Partial |
 | A3 | 递归扫描、扩展名过滤、取消、错误计数；大列表虚拟滚动与按需缩略图，后台扫描不阻塞界面 | 使用不同规模的图片库；私有记录耗时、错误数；检查列表滚动、缩略图与取消 | 原生开发构建已完成图片库只读扫描（部分，不公开本机规模或固定耗时）；滚动/缩略图/取消待测 | Partial |
 | A4 | 输入只读；输出不得相同/嵌套/别名/受保护目录；拒绝 junction/symlink | 路径单测 + 手工 junction + 受保护目录快照比对 | 单测、拒绝提示、快照比对输出 | Pending |
 | A5 | 输入/输出/最近/筛选/并发/重名策略重启保留；切换筛选保留选择 | 关闭重开；筛选前后勾选计数 | [部分运行证据](acceptance-evidence/2026-11-03-native-dev-partial.md)：basename/查询/7d/workers2/skip 重启保留；筛选结果保留隐藏选择 | Partial |
-| A6 | 批量解密、进度、取消、单文件失败继续、跳过/重命名、无半成品、失败清单 | 正常批次 + 混合损坏文件 + 取消 + 重名冲突 + 只读输出 | [部分运行证据](acceptance-evidence/2026-11-03-native-dev-partial.md)：两批成功/跳过、无临时文件、已存在输出未覆盖；取消/损坏/失败 CSV 待测 | Partial |
+| A6 | 批量解密、进度、取消、单文件失败继续、跳过/重命名、无半成品、失败清单 | 正常批次 + 混合损坏文件 + 取消 + 重名冲突 + 只读输出 | [最新回归](acceptance-evidence/2026-11-03-regression-0.1.1.md)：原生批处理、扫描/批次取消、损坏文件继续、跳过/重命名、源/旧输出保留和临时文件清理均通过；GUI 失败 CSV 等导出仍需实测 | Partial |
 | A7 | 日志面板/文件、轮转、打开目录、导出；无敏感路径/密钥 | 触发各类事件；搜索日志与导出文件 | 脱敏日志片段、搜索命令输出 | Pending |
-| A8 | 签名更新可检查、下载、安装、重启；失败不影响当前版本；配置保留 | 发布 0.1.0 与 0.1.1，执行第 7 节更新链路；`.sig` trusted comment 必须含匹配 `version:`；开发机正向测试可验证 `.sig`/版本，但不能替代干净机；必须做篡改 manifest/`.sig` 的负向测试 | 两版 Release、`.sig` trusted comment、更新截图、版本与配置记录 | Pending |
+| A8 | 签名更新可检查、下载、安装、重启；失败不影响当前版本；配置保留 | 发布 0.1.0 与 0.1.1，执行第 7 节更新链路；`.sig` trusted comment 必须含匹配 `version:`；开发机正向测试可验证 `.sig`/版本，但不能替代干净机；必须做篡改 manifest/`.sig` 的负向测试 | [最新回归](acceptance-evidence/2026-11-03-regression-0.1.1.md)：真实 Tauri 验签接受有效包、拒绝篡改包/签名/版本；真实跨版本安装、重启及配置保留尚待执行 | Partial |
 | A9 | 干净 Windows 10/11 x64 无开发环境可安装启动；离线 WebView2 | 两个干净 VM/实体机，断网安装并解密 | [当前状态](acceptance-evidence/2026-11-03-clean-machine-status.md)：**Unsupported until actual clean env available**；需按 [CLEAN_MACHINE.md](CLEAN_MACHINE.md) 执行 | Blocked |
-| A10 | 文档齐全；Git 提交清晰；公开仓库与 Release 可访问 | 检查 README/使用/架构/构建/发布/CHANGELOG；`git log`；匿名访问 Release | [GitHub 状态](acceptance-evidence/2026-11-03-github-status.md)：Public repo + 3 secrets 已核验；Release/提交/资产待完成 | Partial |
+| A10 | 文档齐全；Git 提交清晰；公开仓库与 Release 可访问 | 检查 README/使用/架构/构建/发布/CHANGELOG；`git log`；匿名访问 Release | [GitHub 状态](acceptance-evidence/2026-11-03-github-status.md)：当前 `main` CI 通过；中英用户文档与 `v0.1.0` Release 四个附件匿名可访问，公开包完整下载及哈希/签名链复核通过 | Pass |
+
+使用者已确认 `v0.1.0` 实机查看无问题，见 [实机反馈](acceptance-evidence/2026-11-03-user-smoke-0.1.0.md)。该反馈只作为已报告的烟测证据，不扩大为未描述的干净机、异常处理或跨版本更新结果。
 
 ## 3. 必跑命令
 

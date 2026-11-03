@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-03
+
+维护补丁测试版本，用于继续验证签名更新与升级后的配置保留；不包含运行中替换代码。
+
 ### Added
 
 - 英文 README 与使用说明，中英文文档可相互切换；应用界面仍为简体中文。
@@ -11,6 +15,24 @@
 ### Changed
 
 - README 更新首个桌面测试版本的安装包发布状态，保留未完成的干净机和跨版本更新验收说明。
+- 中文使用说明与实际界面保持一致：解密包含筛选外的已选图片，补齐全选/反选按钮和更新按钮名称。
+
+### Fixed
+
+- 发布流程在生成更新清单前规范化安装包对外文件名，避免 GitHub 将空格改为点后产生无效下载地址。
+- 本地构建仅校验本次版本的独立暂存包，避免旧版安装包保留在缓存目录时误报；不删除或改写旧包。
+- 构建/原生验收辅助脚本显式加载 Windows DPAPI，兼容未预加载相关程序集的 Windows PowerShell 进程。
+- 更新验签负向测试不再把目标版本固定为 `0.1.1`，而是针对输入版本生成确实不同的测试版本，避免新版本被误判为“签名版本校验失效”。
+
+### Tests
+
+- 增加无真实密钥的辅助脚本回归检查，并纳入 CI 与 Release 工作流；验证密钥分阶段隔离、失败后清理、代理恢复和旧包不变。
+- 增加验签测试版本选择的回归检查，覆盖当前版本、预发布、构建元数据及未来版本。
+
+### Verification
+
+- `0.1.0` 已收到使用者“实机查看无问题”的反馈；该反馈记录为实机烟测，不扩大为双系统干净机或跨版本更新验收。
+- 公开 `0.1.0` 安装包的完整下载、SHA-256 一致性和 Tauri Updater 签名正反例已复核；`0.1.1` 安装、升级与配置保留仍须实际执行后记录。
 
 ## [0.1.0] - 2026-11-03
 
@@ -40,5 +62,6 @@
 
 - 当前状态：`Pending`。功能、性能、干净 Windows 10/11 安装、真实图片回归和更新链路必须按 `docs/ACCEPTANCE.md` 记录证据；未完成前不得宣称全部验收通过。
 
-[Unreleased]: https://github.com/Airisua/heartopia-photo-tool/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Airisua/heartopia-photo-tool/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Airisua/heartopia-photo-tool/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Airisua/heartopia-photo-tool/releases/tag/v0.1.0
