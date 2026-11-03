@@ -3,7 +3,7 @@ const UNC_PATH = /\\\\[^\r\n]+/g;
 const ENV_PATH = /%USERPROFILE%\\[^\r\n]*/gi;
 const WINDOWS_FORWARD_PATH = /(^|[\s("'=])([A-Za-z]:\/[^\r\n]*)/g;
 const CREDENTIAL_PAIR =
-  /\b(password|passwd|pwd|token|secret|api[_-]?key|access[_-]?key|authorization)\b\s*[:=]\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;]+)/gi;
+  /\b(password|passwd|pwd|token|access[_-]?token|refresh[_-]?token|secret|client[_-]?secret|api[_-]?key|access[_-]?key|authorization)\b\s*[:=]\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;]+)/gi;
 const BEARER_TOKEN = /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi;
 
 /** Redacts anything that looks like a local absolute path before display. */

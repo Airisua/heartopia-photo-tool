@@ -221,6 +221,15 @@ function sanitizeAppView(state: AppView): AppView {
   };
 }
 
+function preferencesSignature(state: AppView): string {
+  return JSON.stringify({
+    filters: state.filters,
+    conflictPolicy: state.conflictPolicy,
+    workers: state.workers,
+    autoCheckUpdates: state.autoCheckUpdates,
+  });
+}
+
 export default function App() {
   const [appState, setAppState] = useState<AppView | null>(null);
   const [bootStatus, setBootStatus] = useState<BootStatus>("loading");
@@ -381,7 +390,8 @@ export default function App() {
           getLogs().catch(() => [] as LogEntry[]),
         ]);
         if (disposed) return;
-        setAppState(sanitizeAppView(nextState));
+        const sanitizedState = sanitizeAppView(nextState);
+        setAppState(sanitizedState);
         setLogs(appendUniqueLogs([], initialLogs.slice(-300)));
         setUpdate({
           status: "idle",
@@ -389,14 +399,23 @@ export default function App() {
           downloaded: 0,
           total: null,
         });
-        // Compare against the persisted values so a legacy absolute search path
-        // is replaced by its privacy-safe basename on the next auto-save.
-        lastSavedPreferencesRef.current = JSON.stringify({
-          filters: nextState.filters,
-          conflictPolicy: nextState.conflictPolicy,
-          workers: nextState.workers,
-          autoCheckUpdates: nextState.autoCheckUpdates,
-        });
+        const persistedSignature = preferencesSignature(nextState);
+        const privacySignature = preferencesSignature(sanitizedState);
+        lastSavedPreferencesRef.current = persistedSignature;
+        if (privacySignature !== persistedSignature) {
+          // Rewrite a legacy absolute search path immediately rather than
+          // waiting for the normal preference debounce.
+          void savePreferences({
+            filters: sanitizedState.filters,
+            conflictPolicy: sanitizedState.conflictPolicy,
+            workers: sanitizedState.workers,
+            autoCheckUpdates: sanitizedState.autoCheckUpdates,
+          })
+            .then(() => {
+              if (!disposed) lastSavedPreferencesRef.current = privacySignature;
+            })
+            .catch(() => undefined);
+        }
         setBootStatus("ready");
 
         if (nextState.autoCheckUpdates) {
@@ -435,13 +454,7 @@ export default function App() {
   }, [bootNonce, finishScan, finishTask]);
 
   const preferenceSignature = useMemo(() => {
-    if (!appState) return "";
-    return JSON.stringify({
-      filters: appState.filters,
-      conflictPolicy: appState.conflictPolicy,
-      workers: appState.workers,
-      autoCheckUpdates: appState.autoCheckUpdates,
-    });
+    return appState ? preferencesSignature(appState) : "";
   }, [appState]);
 
   useEffect(() => {
@@ -449,6 +462,7 @@ export default function App() {
     if (lastSavedPreferencesRef.current === preferenceSignature) return;
     if (filterValidationMessage(appState.filters)) return;
     const timeout = window.setTimeout(() => {
+      if (lastSavedPreferencesRef.current === preferenceSignature) return;
       savePreferences({
         filters: appState.filters,
         conflictPolicy: appState.conflictPolicy,

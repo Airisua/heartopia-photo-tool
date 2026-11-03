@@ -21,6 +21,8 @@ describe("privacy-safe display text", () => {
       safeDirectoryLabel("C:\\Users\\ExampleUser\\AppData\\LocalLow\\xd\\心动小镇\\ScreenCapture"),
     ).toBe("ScreenCapture");
     expect(safeDirectoryLabel("D:\\Photos\\")).toBe("Photos");
+    expect(safeDirectoryLabel("C:")).toBe("已选目录");
+    expect(safeDirectoryLabel("C:\\")).toBe("已选目录");
   });
 
   it("does not present an absolute source path as a relative photo path", () => {
@@ -32,9 +34,10 @@ describe("privacy-safe display text", () => {
 
   it("redacts credentials from status and log messages", () => {
     const message = sanitizeUiText(
-      "请求失败 token=test-token-value password=test-password-value Authorization: Bearer abcdefghijklmnop",
+      "请求失败 token=test-token-value accessToken=test-access-value password=test-password-value Authorization: Bearer abcdefghijklmnop",
     );
     expect(message).not.toContain("test-token-value");
+    expect(message).not.toContain("test-access-value");
     expect(message).not.toContain("test-password-value");
     expect(message).not.toContain("abcdefghijklmnop");
     expect(message).toContain("凭据已隐藏");
@@ -52,6 +55,7 @@ describe("privacy-safe display text", () => {
       "quoted.jpg",
     );
     expect(sanitizeSearchQuery("%USERPROFILE%\\Pictures\\profile.png")).toBe("profile.png");
+    expect(sanitizeSearchQuery("C:\\")).toBe("");
     expect(sanitizeSearchQuery("Photo/nested/a.jpg")).toBe("Photo/nested/a.jpg");
     expect(sanitizeSearchQuery("C:/Users/ExampleUser/Pictures/d.png")).toBe("d.png");
   });

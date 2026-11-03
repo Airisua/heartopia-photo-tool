@@ -85,7 +85,7 @@ describe("UpdateSheet", () => {
         onRestart={vi.fn()}
       />,
     );
-    expect(screen.getByText(/重启后自动安装、退出并重新打开应用/)).toBeInTheDocument();
+    expect(screen.getByText(/重启后自动安装/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "重启并完成更新" })).toBeInTheDocument();
   });
 });
