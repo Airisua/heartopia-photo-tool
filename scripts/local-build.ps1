@@ -17,6 +17,8 @@ $previousHttpsProxy = [Environment]::GetEnvironmentVariable('HTTPS_PROXY', 'Proc
 $secretNames = @('HEARTOPIA_CRYPTO_MATERIAL_B64','HEARTOPIA_RELEASE','TAURI_SIGNING_PRIVATE_KEY','TAURI_SIGNING_PRIVATE_KEY_PASSWORD')
 try {
     foreach ($name in $secretNames) { Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue }
+    . (Join-Path $PSScriptRoot 'lib\local-dpapi.ps1')
+    Initialize-LocalDpapi
     if (-not (Test-Path -LiteralPath $protectedFile -PathType Leaf)) {
         throw 'Prepare local build secrets before using this helper.'
     }
@@ -94,7 +96,22 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Release bundle or signing failed.' }
         Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY,Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue
         $profile = if ($DebugBuild) { 'debug' } else { 'release' }
-        & node scripts/verify-release-artifacts.mjs --bundle-dir "src-tauri/target/$profile/bundle/nsis"
+        # Keep previously built versions intact. Validate a fresh staging directory
+        # containing exactly the current version, not a shared multi-version cache.
+        $version = (Get-Content -LiteralPath (Join-Path $root 'package.json') -Raw | ConvertFrom-Json).version
+        $bundleDir = Join-Path $root "src-tauri\target\$profile\bundle\nsis"
+        $suffix = "_${version}_x64-setup.exe"
+        $current = @(Get-ChildItem -LiteralPath $bundleDir -File | Where-Object {
+            $_.Name.EndsWith($suffix, [StringComparison]::OrdinalIgnoreCase)
+        })
+        if ($current.Count -ne 1) { throw 'Expected exactly one installer for the current version.' }
+        $signature = $current[0].FullName + '.sig'
+        if (-not (Test-Path -LiteralPath $signature -PathType Leaf)) { throw 'Current updater signature is missing.' }
+        $verifiedDir = Join-Path $root ('.local\build\current-package-' + $version + '-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $verifiedDir -Force | Out-Null
+        Copy-Item -LiteralPath $current[0].FullName -Destination (Join-Path $verifiedDir $current[0].Name)
+        Copy-Item -LiteralPath $signature -Destination (Join-Path $verifiedDir ($current[0].Name + '.sig'))
+        & node scripts/verify-release-artifacts.mjs --bundle-dir $verifiedDir --version $version
     } else {
         $arguments = @('run', 'tauri', '--', $Mode)
         if ($DebugBuild) { $arguments += '--debug' }

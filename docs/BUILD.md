@@ -50,6 +50,7 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml
 node scripts/scan-secrets.mjs
 node scripts/preflight-release.mjs --ci
+./scripts/local-build.tests.ps1
 ```
 
 `npm run verify` 组合了前端类型检查、前端测试、生产构建、核心库测试和 Tauri 命令层测试。发布前还需要执行发布配置预检（见第 6 节）。
@@ -82,6 +83,10 @@ node scripts/preflight-release.mjs --ci
 `local-build.ps1` 从 `.secrets/crypto.dpapi` 读取 48 字节并在进程内注入；不会把材料写入仓库或输出。没有本地材料的公开贡献者可以只运行 `npm run tauri dev`，此时应用应显示 `keyAvailable=false`，解密不可用。
 
 本地 Release 构建分为三个阶段：先在不含发布密钥的环境中构建前端；再仅向 `tauri build --no-bundle` 注入游戏解密材料；最后清除材料，仅向 `tauri bundle --bundles nsis` 注入更新签名私钥。构建使用被 Git 忽略的钩子覆盖配置，避免重复执行前端脚本；不会改写正式配置。开发和测试模式不读取签名私钥，任意失败路径都会清理环境变量和明文缓冲。测试模式同时运行核心库及 Tauri 测试。
+
+辅助脚本会显式初始化 Windows DPAPI，避免全新的 Windows PowerShell 5.1 进程尚未加载程序集时失败。安装后的应用仍只使用 Rust，不调用这些脚本。
+
+本地打包目录可以保留旧版安装包。本次版本的安装包和签名单独复制到新的、被忽略的暂存目录后再校验，旧包不删除、不移动、不改写；发布目录“必须恰好有一个安装包”的严格检查保持不变。`local-build.tests.ps1` 使用合成 DPAPI 数据和模拟命令，验证该场景、构建阶段密钥隔离、清理和代理恢复；它不是应用实机验收。
 
 安装后的应用支持离线运行，但构建时 Tauri 即使已有 WebView2 离线安装器缓存，也会请求 Microsoft 下载链接的重定向信息。若该链接被网络环境阻断，可使用 `-DownloadProxy 'http://HOST:PORT'` 临时指定构建下载代理；它仅影响当前打包进程，结束或失败后恢复原进程变量，不修改系统代理，也不进入发布应用。
 

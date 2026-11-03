@@ -99,7 +99,7 @@ fn run() -> Result<Value, &'static str> {
     }
 
     let mut mismatched_manifest = manifest;
-    mismatched_manifest["version"] = json!("0.1.1");
+    mismatched_manifest["version"] = json!(negative_test_version(&update.version));
     let mismatched_update = updater
         .restore_update(mismatched_manifest)
         .map_err(|_| "restore_version_mismatch")?
@@ -152,6 +152,17 @@ fn read_trimmed(path: &PathBuf) -> std::io::Result<String> {
     Ok(fs::read_to_string(path)?.trim().to_owned())
 }
 
+fn negative_test_version(actual: &str) -> &'static str {
+    // Build metadata does not affect SemVer precedence. Use two valid probe
+    // versions so the mismatch stays real even when testing a future release
+    // whose version happens to equal our first probe.
+    if actual.split('+').next() == Some("0.0.0-signature-mismatch") {
+        "0.0.1-signature-mismatch"
+    } else {
+        "0.0.0-signature-mismatch"
+    }
+}
+
 fn manifest_signature_path(manifest: &Value) -> Option<String> {
     let os = env::consts::OS;
     let arch = env::consts::ARCH;
@@ -189,4 +200,28 @@ fn tamper_signature(signature: &str) -> Option<String> {
         rebuilt.push('\n');
     }
     Some(STANDARD.encode(rebuilt.as_bytes()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::negative_test_version;
+
+    #[test]
+    fn mismatch_probe_is_different_for_current_and_future_versions() {
+        for version in [
+            "0.1.0",
+            "0.1.1",
+            "1.2.3",
+            "1.2.3-rc.1",
+            "1.2.3+build.7",
+            "0.0.0-signature-mismatch",
+            "0.0.0-signature-mismatch+build.7",
+        ] {
+            assert_ne!(
+                negative_test_version(version),
+                version.split('+').next().unwrap(),
+                "negative test must actually change the signed semantic version"
+            );
+        }
+    }
 }

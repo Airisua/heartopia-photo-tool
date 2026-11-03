@@ -28,6 +28,8 @@ if (-not (Test-Path -LiteralPath $InputRoot -PathType Container)) {
 $plain = $null
 Push-Location $projectRoot
 try {
+    . (Join-Path $PSScriptRoot 'lib\local-dpapi.ps1')
+    Initialize-LocalDpapi
     $plain = [Security.Cryptography.ProtectedData]::Unprotect(
         [IO.File]::ReadAllBytes($cryptoFile), $null,
         [Security.Cryptography.DataProtectionScope]::CurrentUser

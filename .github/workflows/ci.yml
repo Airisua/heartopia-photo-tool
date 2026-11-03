@@ -67,9 +67,14 @@ jobs:
         run: |
           cargo test --manifest-path crates/photo-core/Cargo.toml --locked
           cargo test --manifest-path src-tauri/Cargo.toml --locked
+          cargo test --manifest-path src-tauri/Cargo.toml --locked --example verify_update
 
       - name: Privacy scanner tests
         run: node --test scripts/privacy-scan.node.mjs
+
+      - name: Local helper synthetic regression checks
+        shell: pwsh
+        run: ./scripts/local-build.tests.ps1
 
       - name: Secret and path scan
         run: |
