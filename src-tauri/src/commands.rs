@@ -26,8 +26,12 @@ use uuid::Uuid;
 
 const MAX_CIPHER_BYTES: u64 = 32 * 1024 * 1024 + 16;
 const MAX_THUMBNAIL_SOURCE_BYTES: u64 = 32 * 1024 * 1024;
-const UPDATE_TIMEOUT: Duration = Duration::from_secs(15);
+const UPDATE_CHECK_TIMEOUT: Duration = Duration::from_secs(15);
 const MAX_UPDATE_BYTES: u64 = 512 * 1024 * 1024;
+
+fn update_download_timeout() -> Duration {
+    Duration::from_secs(15 * 60)
+}
 
 fn error(message: &'static str) -> String {
     message.to_owned()
@@ -928,7 +932,7 @@ pub async fn check_update(
     let current = state.version.clone();
     let updater = app
         .updater_builder()
-        .timeout(UPDATE_TIMEOUT)
+        .timeout(UPDATE_CHECK_TIMEOUT)
         .build()
         .map_err(|_| error("更新服务暂不可用"));
     let result = match updater {
@@ -941,7 +945,7 @@ pub async fn check_update(
     let mut runtime = state.update.lock();
     runtime.busy = false;
     match result {
-        Ok(Some(update)) => {
+        Ok(Some(mut update)) => {
             let allowed = update.download_url.scheme() == "https"
                 && update.download_url.host_str() == Some("github.com")
                 && update
@@ -954,6 +958,7 @@ pub async fn check_update(
                 runtime.view = view.clone();
                 return Ok(view);
             }
+            update.timeout = Some(update_download_timeout());
             let mut view = UpdateView::new("available", current);
             view.version = Some(update.version.clone());
             view.notes = update.body.clone();
@@ -1083,4 +1088,16 @@ pub fn restart_app(app: AppHandle, state: State<'_, AppState>) -> Result<(), Str
         .install(bytes)
         .map_err(|_| error("更新安装失败，当前版本未受影响"))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod update_policy_tests {
+    use super::{update_download_timeout, UPDATE_CHECK_TIMEOUT};
+    use std::time::Duration;
+
+    #[test]
+    fn installer_download_does_not_inherit_the_short_metadata_deadline() {
+        assert!(update_download_timeout() > UPDATE_CHECK_TIMEOUT);
+        assert!(update_download_timeout() >= Duration::from_secs(10 * 60));
+    }
 }

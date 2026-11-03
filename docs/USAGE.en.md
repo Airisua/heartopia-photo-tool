@@ -100,6 +100,8 @@ The application can check for updates at startup according to your setting, or y
 
 In this guide, "hot update" means a desktop application version update. It does not replace program code while the application is running.
 
+If an older version cannot finish an update download on a slow connection, close the tool and install the latest published full installer from Releases under the same Windows account. Configuration is stored separately from the installation directory; do not delete it or remove application data. Keep checksum and signature verification enabled.
+
 ## 8. Troubleshooting
 
 **The scan finds zero files**
