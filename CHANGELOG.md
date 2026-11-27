@@ -4,6 +4,21 @@
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-28
+
+桌面端前端界面视觉优化与文档精简版本；不涉及解密算法或路径安全边界变更。
+
+### Changed
+
+- 优化桌面工作台配色、表面对比度、圆角阴影与按钮禁用态，提升未选择与已选择状态的视觉区分度。
+- 整体调优中文字号与信息层级（顶栏、目录卡片、筛选栏、表格列表、进度与日志面板），数值列保持等宽对齐。
+- 精简图片库标题栏高度以释放更多列表可视区域，列表行高调整为 62px，缩略图放大至 54×40px，并统一自定义下拉箭头与操作栏分组分隔。
+- 精简中英文 README，仅保留项目介绍、免责声明与技术栈。
+
+### Fixed
+
+- 在 `index.html` 中内联 SVG 图标，消除浏览器预览模式下 `/favicon.ico` 404 控制台报错。
+
 ## [0.1.1] - 2026-11-03
 
 维护补丁测试版本，用于继续验证签名更新与升级后的配置保留；不包含运行中替换代码。
@@ -64,6 +79,7 @@
 
 - 当前状态：`Pending`。功能、性能、干净 Windows 10/11 安装、真实图片回归和更新链路必须按 `docs/ACCEPTANCE.md` 记录证据；未完成前不得宣称全部验收通过。
 
-[Unreleased]: https://github.com/Airisua/heartopia-photo-tool/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Airisua/heartopia-photo-tool/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/Airisua/heartopia-photo-tool/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Airisua/heartopia-photo-tool/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Airisua/heartopia-photo-tool/releases/tag/v0.1.0
