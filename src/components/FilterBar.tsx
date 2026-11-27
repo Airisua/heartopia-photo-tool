@@ -1,4 +1,4 @@
-import { CalendarDays, Search, SlidersHorizontal, X } from "lucide-react";
+import { CalendarDays, ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import type { DatePreset, Filters } from "../lib/types";
 import { countActiveFilters, filterValidationMessage } from "../lib/filter";
 import { safeRelativePath, sanitizeSearchQuery } from "../lib/privacy";
@@ -97,6 +97,7 @@ export function FilterBar({
               </option>
             ))}
           </select>
+          <ChevronDown size={13} className="select-chevron" aria-hidden="true" />
         </label>
 
         <label className="select-field narrow">
@@ -113,6 +114,7 @@ export function FilterBar({
               </option>
             ))}
           </select>
+          <ChevronDown size={13} className="select-chevron" aria-hidden="true" />
         </label>
 
         <div className="date-presets" role="group" aria-label="快捷日期范围">

@@ -62,6 +62,7 @@ export function SelectionBar({
           <CheckCheck size={14} />
           反选全部
         </button>
+        <span className="selection-actions-divider" aria-hidden="true" />
         <button
           type="button"
           className="button ghost compact"

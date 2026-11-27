@@ -1,4 +1,4 @@
-import { Check, RefreshCw, ShieldAlert, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, RefreshCw, ShieldAlert, SlidersHorizontal } from "lucide-react";
 import type { ConflictPolicy } from "../lib/types";
 
 interface PreferencesControlsProps {
@@ -31,28 +31,34 @@ export function PreferencesControls({
       <div className="preferences-grid">
         <label className="preference-field">
           <span>重名文件</span>
-          <select
-            value={conflictPolicy}
-            onChange={(event) => onConflictChange(event.target.value as ConflictPolicy)}
-            disabled={disabled}
-          >
-            <option value="skip">跳过</option>
-            <option value="rename">自动重命名</option>
-          </select>
+          <span className="select-wrap">
+            <select
+              value={conflictPolicy}
+              onChange={(event) => onConflictChange(event.target.value as ConflictPolicy)}
+              disabled={disabled}
+            >
+              <option value="skip">跳过</option>
+              <option value="rename">自动重命名</option>
+            </select>
+            <ChevronDown size={12} className="select-chevron" aria-hidden="true" />
+          </span>
         </label>
         <label className="preference-field">
           <span>并发数</span>
-          <select
-            value={workers}
-            onChange={(event) => onWorkersChange(Number(event.target.value))}
-            disabled={disabled}
-          >
-            {Array.from({ length: 8 }, (_, index) => index + 1).map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
+          <span className="select-wrap">
+            <select
+              value={workers}
+              onChange={(event) => onWorkersChange(Number(event.target.value))}
+              disabled={disabled}
+            >
+              {Array.from({ length: 8 }, (_, index) => index + 1).map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="select-chevron" aria-hidden="true" />
+          </span>
         </label>
       </div>
       <label className={`preference-check ${disabled ? "is-disabled" : ""}`}>

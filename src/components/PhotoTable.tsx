@@ -121,7 +121,7 @@ export function PhotoTable({
   const rowVirtualizer = useVirtualizer({
     count: photos.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 60,
+    estimateSize: () => 62,
     overscan: 7,
     getItemKey: (index) => photos[index]?.id ?? index,
     initialRect: { width: 960, height: 470 },
@@ -173,7 +173,7 @@ export function PhotoTable({
       const base = fromHeader ? -1 : safeActiveIndex;
       const pageSize = Math.max(
         1,
-        Math.floor((scrollRef.current?.clientHeight ?? 420) / 60) - 1,
+        Math.floor((scrollRef.current?.clientHeight ?? 420) / 62) - 1,
       );
       let next: number | null = null;
       switch (event.key) {

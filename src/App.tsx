@@ -1040,13 +1040,17 @@ export default function App() {
         <section className="library-panel" aria-labelledby="library-title">
           <div className="library-head">
             <div className="library-title-group">
-              <span className="eyebrow">素材工作区</span>
               <div className="library-title-line">
                 <h1 id="library-title">图片库</h1>
                 <span className="count-pill">
                   {filtered.length.toLocaleString("zh-CN")}
                   <span className="count-divider">/</span>
                   {photos.length.toLocaleString("zh-CN")}
+                </span>
+                <span className="library-subtitle">
+                  {photos.length > 0
+                    ? `当前结果 ${formatBytes(filteredBytes)} · 原始文件只读`
+                    : "扫描后按拍摄时间从新到旧排列"}
                 </span>
                 {scanning ? <span className="live-pill">索引中</span> : null}
                 {tasking ? (
@@ -1055,11 +1059,6 @@ export default function App() {
                   </span>
                 ) : null}
               </div>
-              <p className="library-subtitle">
-                {photos.length > 0
-                  ? `当前结果 ${formatBytes(filteredBytes)} · 原始文件只读`
-                  : "选择目录后扫描，图片会按拍摄时间从新到旧排列。"}
-              </p>
             </div>
             <div className="library-actions">
               <button
